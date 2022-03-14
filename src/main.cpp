@@ -81,7 +81,6 @@ std::string dns_resolv_to_host_name(const char *ip_address)
     if (getnameinfo((struct sockaddr *)&internet_socket_address, sizeof(struct sockaddr_in),
                     aux_buffer, sizeof(aux_buffer), NULL, 0, NI_NAMEREQD))
     {
-        std::cout << "\nErro ao encontrar o host name a partir do endereço ip.\n";
         return host_name;
     }
 
@@ -121,6 +120,7 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
     struct timeval time_out_to_receive = {.tv_sec = RECEIVE_TIMEOUT, .tv_usec = 0};
     unsigned short identifier = getpid();
     unsigned short sequence_number = 0;
+    unsigned short received_number = 0;
     unsigned char ttl_receive;
 
     rest_of_message_send.push_back(static_cast<unsigned char>((identifier >> 8) & 0xFF));
@@ -136,6 +136,7 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
     setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&time_out_to_receive, sizeof(struct timeval));
 
     std::cout << "PING " << src_address << " (" << ip_address << ") " << MAX_DATA_SIZE << "(" << MAX_SIZE_MESSAGE << ") bytes of data.\n";
+    time_begin = get_uptime();
     while (ping_rum)
     {
         if (sequence_number != 0)
@@ -153,7 +154,6 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
         if (sendto(socket_fd, icmp.encode().data(), ICMP_PING_SIZE, 0, 
             (struct sockaddr *)internet_socket_address_send, sizeof(struct sockaddr)) <= 0)
         {
-            std::cout << "\nErro ao enviar mensagem via socket!\n";
             continue;
         }
 
@@ -161,11 +161,12 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
         if (recvfrom(socket_fd, receive_message.data(), receive_message.size(), 0,
             (struct sockaddr *)&internet_socket_address_receive, &internet_socket_address_receive_len) <= 0)
         {
-            std::cout << "\nErro ao receber mensagem via socket!\n";
+            continue;
         }
         else
         {
             time_receive = get_uptime();
+            received_number++;
             message.clear();
             message.insert(message.begin(), receive_message.data(), receive_message.data() + MAX_SIZE_MESSAGE);
             icmp.decode(message, &ttl_receive, nullptr, nullptr, nullptr);
@@ -174,7 +175,11 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
                       " ttl=" << int(ttl_receive) << " tempo=" << (duration_cast<milliseconds>(time_receive - time_send).count()) << "ms\n";
         }
     }
-    
+    time_end = get_uptime();
+
+    std::cout << "--- " << src_address << " statistics ---\n" << sequence_number << " pacotes transmitidos, " <<
+               received_number << " recebidos, " << int(((sequence_number - received_number)/sequence_number)*100) << 
+               "% pacotes perdidos, time " << (duration_cast<milliseconds>(time_end - time_begin).count()) << "ms\n";
 }
 
 int main(int argc, char *argv[])
