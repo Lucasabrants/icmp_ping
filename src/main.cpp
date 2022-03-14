@@ -26,12 +26,12 @@
 
 using namespace std::chrono;
 
-#define PING_PORT_NUMBER 0
-#define PING_SLEEP_RATE 1000000
-#define RECEIVE_TIMEOUT 1
-#define MAX_DATA_SIZE 56
-#define MAX_SIZE_MESSAGE 84
-#define SEQUENCE_NUMBER_INDEX 2
+#define PING_PORT_NUMBER 0          // Como o protocolo ICMP pertence a camada de transporte não existe o conceito de porta
+#define PING_SLEEP_RATE 1000000     // Tempo em microsengundos 
+#define RECEIVE_TIMEOUT 1           // Tempo em segundos
+#define MAX_DATA_SIZE 56            // Tamanho máximo padrão em bytes para o campo data no corpo do protocolo ICMP
+#define MAX_SIZE_MESSAGE 84         // Tamanho máximo da mensagem em bytes considerando o pacote ICMP_PING + o header do protocolo IP
+#define SEQUENCE_NUMBER_INDEX 2     // Posição do campo Sequence Number no array de bytes 
 
 int ping_rum = 1;
 
@@ -51,7 +51,6 @@ nanoseconds get_uptime()
 
 std::string dns_resolv_to_ip(const char *address_host, struct sockaddr_in *internet_socket_address)
 {
-    std::cout << "\nResolvendo DNS\n";
     struct hostent *host_entry;
     std::string ip;
 
@@ -124,8 +123,6 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
     unsigned short sequence_number = 0;
     unsigned char ttl_receive;
 
-    icmp.set_source_address("192.168.100.105");
-    icmp.set_destination_address(ip_address);
     rest_of_message_send.push_back(static_cast<unsigned char>((identifier >> 8) & 0xFF));
     rest_of_message_send.push_back(static_cast<unsigned char>(identifier & 0xFF));
     rest_of_message_send.insert(rest_of_message_send.end(), 2, 0);
@@ -194,11 +191,7 @@ int main(int argc, char *argv[])
 
     ip_address = dns_resolv_to_ip(argv[1], &internet_socket_address);
 
-    std::cout << "Ip " << ip_address << std::endl;
-
     host_name = dns_resolv_to_host_name(ip_address.c_str());
-
-    std::cout << "Host name " << host_name << std::endl;
 
     socket_fd = connet_socket();
     if (socket_fd < 0)

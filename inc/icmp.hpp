@@ -14,8 +14,9 @@
 #include <vector>
 #include <memory>
 
-#define ICMP_PING_SIZE 64 //tamanho em bytes
+#define ICMP_PING_SIZE 64 //Tamanho em bytes
 
+// Tipos de mensagens difinidas na referencia do protocolo ICMP
 enum class IcmpType : unsigned char
 {
     ECHO_REPLY,
@@ -41,20 +42,16 @@ enum class IcmpType : unsigned char
 class Icmp
 {
 private:
-    unsigned char versio_and_ihl, type_of_service, ttl, protocol, code;
-    unsigned short total_length, identification, flags_and_fragment_offset, header_checksun, checksum;
-    unsigned int source_address, destination_address;
+    unsigned char code;
+    unsigned short checksum;
     IcmpType type;
     std::vector<unsigned char> rest_of_message;
 
-    void checksum_calc(const std::vector<unsigned char> &message = std::vector<unsigned char>());
-    void header_checksum_calc(const std::vector<unsigned char> &header_message = std::vector<unsigned char>());
+    void checksum_calc();
 
 public:
     Icmp();
     Icmp(IcmpType type, unsigned char code = 0);
-    void set_source_address(const std::string ipv4_address);
-    void set_destination_address(const std::string ipv4_address);
     std::vector<unsigned char> encode();
     void decode(std::vector<unsigned char> &message, unsigned char * ttl, 
                unsigned int *source_address, unsigned int *destination_address,
