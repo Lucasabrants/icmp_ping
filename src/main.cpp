@@ -82,7 +82,7 @@ std::string dns_resolv_to_host_name(const char *ip_address)
     if (getnameinfo((struct sockaddr *)&internet_socket_address, sizeof(struct sockaddr_in),
                     aux_buffer, sizeof(aux_buffer), NULL, 0, NI_NAMEREQD))
     {
-        std::cout << "\n Erro ao encontrar o host name a partir do endereço ip.\n";
+        std::cout << "\nErro ao encontrar o host name a partir do endereço ip.\n";
         return host_name;
     }
 
@@ -141,7 +141,11 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
     std::cout << "PING " << src_address << " (" << ip_address << ") " << MAX_DATA_SIZE << "(" << MAX_SIZE_MESSAGE << ") bytes of data.\n";
     while (ping_rum)
     {
-        usleep(PING_SLEEP_RATE);
+        if (sequence_number != 0)
+        {
+            usleep(PING_SLEEP_RATE);
+        }
+
         sequence_number++;
         rest_of_message_send.at(SEQUENCE_NUMBER_INDEX) = static_cast<unsigned char>((sequence_number >> 8) & 0xFF);
         rest_of_message_send.at(SEQUENCE_NUMBER_INDEX + 1) = static_cast<unsigned char>(sequence_number & 0xFF);
@@ -149,7 +153,7 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
         icmp.set_last_parameters(rest_of_message_send);
 
         time_send = get_uptime();
-        if (sendto(socket_fd, icmp.encode().data(), MAX_SIZE_MESSAGE, 0, 
+        if (sendto(socket_fd, icmp.encode().data(), ICMP_PING_SIZE, 0, 
             (struct sockaddr *)internet_socket_address_send, sizeof(struct sockaddr)) <= 0)
         {
             std::cout << "\nErro ao enviar mensagem via socket!\n";
