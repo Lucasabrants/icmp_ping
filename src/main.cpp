@@ -27,7 +27,7 @@
 using namespace std::chrono;
 
 #define PING_PORT_NUMBER 0
-#define PING_SLEEP_RATE 
+#define PING_SLEEP_RATE 1000000
 #define RECEIVE_TIMEOUT 1
 #define MAX_DATA_SIZE 56
 #define MAX_SIZE_MESSAGE 84
@@ -95,11 +95,11 @@ int connet_socket()
     int socket_fd;
     if (getuid())
     {
-        socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_TCP);
+        socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
     }
     else
     {
-        socket_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+        socket_fd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     }
 
     return socket_fd;
@@ -113,15 +113,16 @@ void signal_handler(int signal)
 void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address_send, const char *host_name,
                       const char *ip_address, const char *src_address)
 {
-    std::vector<unsigned char> rest_of_message_send;
+    std::vector<unsigned char> rest_of_message_send, message;
     std::array<unsigned char, MAX_SIZE_MESSAGE> receive_message;
     Icmp icmp(IcmpType::ECHO_REQUEST);
     struct sockaddr_in internet_socket_address_receive;
-    unsigned int internet_socket_address_receive_len;
+    unsigned int internet_socket_address_receive_len, ttl_send = 255;
     nanoseconds time_send, time_receive, time_begin, time_end;
     struct timeval time_out_to_receive = {.tv_sec = RECEIVE_TIMEOUT, .tv_usec = 0};
     unsigned short identifier = getpid();
     unsigned short sequence_number = 0;
+    unsigned char ttl_receive;
 
     icmp.set_source_address("192.168.100.105");
     icmp.set_destination_address(ip_address);
@@ -130,12 +131,17 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
     rest_of_message_send.insert(rest_of_message_send.end(), 2, 0);
     rest_of_message_send.insert(rest_of_message_send.end(), MAX_DATA_SIZE, 0xFF);
 
+    if (setsockopt(socket_fd, IPPROTO_IP, IP_TTL, &ttl_send, sizeof(ttl_send)) != 0)
+    {
+        std::cout << "\nSetting socket options to TTL failed!\n";
+        return;
+    }
     setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&time_out_to_receive, sizeof(struct timeval));
 
     std::cout << "PING " << src_address << " (" << ip_address << ") " << MAX_DATA_SIZE << "(" << MAX_SIZE_MESSAGE << ") bytes of data.\n";
     while (ping_rum)
     {
-        usleep(1000000);
+        usleep(PING_SLEEP_RATE);
         sequence_number++;
         rest_of_message_send.at(SEQUENCE_NUMBER_INDEX) = static_cast<unsigned char>((sequence_number >> 8) & 0xFF);
         rest_of_message_send.at(SEQUENCE_NUMBER_INDEX + 1) = static_cast<unsigned char>(sequence_number & 0xFF);
@@ -159,6 +165,12 @@ void rum_ping_command(int socket_fd, struct sockaddr_in *internet_socket_address
         else
         {
             time_receive = get_uptime();
+            message.clear();
+            message.insert(message.begin(), receive_message.data(), receive_message.data() + MAX_SIZE_MESSAGE);
+            icmp.decode(message, &ttl_receive, nullptr, nullptr, nullptr);
+
+            std::cout << ICMP_PING_SIZE << " bytes de " << host_name << " (" << ip_address << "): icmp_seq=" << sequence_number << 
+                      " ttl=" << int(ttl_receive) << " tempo=" << (duration_cast<milliseconds>(time_receive - time_send).count()) << "ms\n";
         }
     }
     

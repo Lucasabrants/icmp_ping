@@ -14,6 +14,8 @@
 #include <vector>
 #include <memory>
 
+#define ICMP_PING_SIZE 64 //tamanho em bytes
+
 enum class IcmpType : unsigned char
 {
     ECHO_REPLY,
@@ -56,7 +58,7 @@ public:
     std::vector<unsigned char> encode();
     void decode(std::vector<unsigned char> &message, unsigned char * ttl, 
                unsigned int *source_address, unsigned int *destination_address,
-               std::vector<unsigned char> &rest_of_message);
+               std::shared_ptr<std::vector<unsigned char>> rest_of_message);
     void set_last_parameters(std::vector<unsigned char> &p_message);
 };
 

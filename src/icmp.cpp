@@ -15,7 +15,6 @@
 #define ICMP_HEADER_SIZE 20
 #define ICMP_VERSION 4
 #define INTERNET_HEADER_LENGTH 5
-#define ICMP_PING_SIZE 64 //tamanho em bytes
 #define MAX_TTL_VALUE 255
 #define ICMP_TTL_INDEX 8
 #define ICMP_SOURCE_ADDRESS_INDEX 12
@@ -124,36 +123,11 @@ std::vector<unsigned char> Icmp::encode()
 {
     std::vector<unsigned char> message;
     this->checksum_calc();
-    this->header_checksum_calc();
 
-    message.push_back(this->versio_and_ihl);
-    message.push_back(this->type_of_service);
-    message.push_back(static_cast<unsigned char>((this->total_length >> 8) & 0xFF));
-    message.push_back(static_cast<unsigned char>(this->total_length & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->identification >> 8) & 0xFF));
-    message.push_back(static_cast<unsigned char>(this->identification & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->flags_and_fragment_offset >> 8) & 0xFF));
-    message.push_back(static_cast<unsigned char>(this->flags_and_fragment_offset & 0xFF));
-    message.push_back(this->ttl);
-    message.push_back(this->protocol);
-    
-    message.push_back(static_cast<unsigned char>(this->header_checksun & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->header_checksun >> 8) & 0xFF));
-    
-    message.push_back(static_cast<unsigned char>((this->source_address >> 24) & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->source_address >> 16) & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->source_address >> 8) & 0xFF));
-    message.push_back(static_cast<unsigned char>(this->source_address & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->destination_address >> 24) & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->destination_address >> 16) & 0xFF));
-    message.push_back(static_cast<unsigned char>((this->destination_address >> 8) & 0xFF));
-    message.push_back(static_cast<unsigned char>(this->destination_address & 0xFF));
     message.push_back(static_cast<unsigned char>(this->type));
     message.push_back(this->code);
-
     message.push_back(static_cast<unsigned char>(this->checksum & 0xFF));
     message.push_back(static_cast<unsigned char>((this->checksum >> 8) & 0xFF));
-    
     message.insert(message.end(), this->rest_of_message.begin(), this->rest_of_message.end());
 
     return message;
@@ -161,7 +135,7 @@ std::vector<unsigned char> Icmp::encode()
 
 void Icmp::decode(std::vector<unsigned char> &message, unsigned char * ttl, 
                unsigned int *source_address, unsigned int *destination_address,
-               std::vector<unsigned char> &rest_of_message)
+               std::shared_ptr<std::vector<unsigned char>> rest_of_message)
 {
     if (message.empty())
     {
@@ -189,10 +163,10 @@ void Icmp::decode(std::vector<unsigned char> &message, unsigned char * ttl,
         *destination_address |= message.at(ICMP_DESTINATION_ADDRESS_INDEX + 3) & 0x000000FF;
     }
 
-    if (!rest_of_message.empty())
+    if (rest_of_message)
     {
-        rest_of_message.clear();
-        rest_of_message.insert(rest_of_message.begin(), message.begin() + ICMP_REST_OF_MESSAGE_INDEX, message.end());
+        rest_of_message->clear();
+        rest_of_message->insert(rest_of_message->begin(), message.begin() + ICMP_REST_OF_MESSAGE_INDEX, message.end());
     }
 }
 
