@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
     std::string ip_address, host_name;
     struct sockaddr_in internet_socket_address;
 
-    if (argc < 2 || argc > 4)
+    if (argc != 2)
     {
         std::cout << "\nNumero de parametros invalido.\n";
         return 0;
